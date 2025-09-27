@@ -1,0 +1,155 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AccessCard {
+  id             Int              @id @default(autoincrement())
+  cardNumber     String
+  status         AccessCardStatus
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+  RoomAccessCard RoomAccessCard[]
+
+  @@unique([cardNumber])
+  @@map("access_cards")
+}
+
+model Account {
+  id                  Int                   @id @default(autoincrement())
+  username            String
+  password            String
+  role                Role
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  deletedAt           DateTime?
+  AccountNotification AccountNotification[]
+
+  @@map("accounts")
+}
+
+model Tenant {
+  id             Int              @id @default(autoincrement())
+  fullName       String
+  gender         Gender
+  occupation     String?
+  dateOfBirth    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+  RoomAccessCard RoomAccessCard[]
+
+  @@map("tenants")
+}
+
+model Room {
+  id             Int              @id @default(autoincrement())
+  roomNumber     String
+  capacity       Int
+  status         RoomStatus
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+  RoomAccessCard RoomAccessCard[]
+
+  @@unique([roomNumber])
+  @@map("rooms")
+}
+
+model RoomAccessCard {
+  id          Int         @id @default(autoincrement())
+  acessCardId Int
+  roomId      Int
+  tenantId    Int
+  accessCard  AccessCard  @relation(fields: [acessCardId], references: [id])
+  room        Room        @relation(fields: [roomId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  startDate   DateTime
+  endDate     DateTime?
+  AccessLog   AccessLog[]
+
+  @@map("room_access_cards")
+}
+
+model AccessLog {
+  id              Int            @id @default(autoincrement())
+  roomAcessCardId Int
+  roomAccessCard  RoomAccessCard @relation(fields: [roomAcessCardId], references: [id])
+  note            String?
+  peopleIn        Int
+  peopleOut       Int
+  logDate         DateTime
+  createdAt       DateTime       @default(now())
+
+  @@map("access_logs")
+}
+
+model Notification {
+  id                  Int                   @id @default(autoincrement())
+  title               String
+  content             String
+  type                NotificationType
+  sentAt              DateTime              @default(now())
+  AccountNotification AccountNotification[]
+
+  @@map("notifications")
+}
+
+model AccountNotification {
+  id             Int          @id @default(autoincrement())
+  notificationId Int
+  accountId      Int
+  isRead         Boolean      @default(false)
+  notification   Notification @relation(fields: [notificationId], references: [id])
+  account        Account      @relation(fields: [accountId], references: [id])
+
+  @@map("account_notifications")
+}
+
+enum AccessCardStatus {
+  ACTIVE
+  DEACTIVED
+}
+
+enum Role {
+  USER
+  SECURITY
+  MANAGER
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  MAINTENANCE
+  CLEANING
+  UNAVAILABLE
+}
+
+enum NotificationType {
+  ALERT
+  EVENT
+  ACCESS
+  CAPACITY
+  SECURITY
+  SYSTEM_ANNOUNCEMENT
+  NEW_MESSAGE
+}
