@@ -1,0 +1,3 @@
+export const DEBOUNCE_EVENT_UNLOCK_TTL = 5;
+export const UNCONFIRMED_UNLOCK_EVENT_TTL = 2;
+export const PENDING_UNLOCK_EVENT_TTL = 15;

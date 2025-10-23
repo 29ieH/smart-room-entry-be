@@ -13,84 +13,75 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model AccessCard {
-  id             Int              @id @default(autoincrement())
-  cardNumber     String
-  status         AccessCardStatus
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
-  RoomAccessCard RoomAccessCard[]
+model Role {
+  id          Int       @id @default(autoincrement())
+  roleName    RoleName
+  description String?
+  createdAt   DateTime  @default(now())
+  accounts    Account[]
 
-  @@unique([cardNumber])
-  @@map("access_cards")
+  @@unique([roleName])
 }
 
 model Account {
   id                  Int                   @id @default(autoincrement())
-  username            String
+  name                String                @default("Unknown")
+  userName            String
   password            String
-  role                Role
+  status              AccountStatus
+  roleId              Int
+  role                Role                  @relation(fields: [roleId], references: [id])
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   deletedAt           DateTime?
   AccountNotification AccountNotification[]
 
+  @@unique([userName])
   @@map("accounts")
 }
 
 model Tenant {
-  id             Int              @id @default(autoincrement())
-  fullName       String
-  gender         Gender
-  occupation     String?
-  dateOfBirth    DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
-  RoomAccessCard RoomAccessCard[]
+  id          Int       @id @default(autoincrement())
+  fullName    String
+  gender      Gender
+  occupation  String?
+  dateOfBirth DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
   @@map("tenants")
 }
 
 model Room {
-  id             Int              @id @default(autoincrement())
-  roomNumber     String
-  capacity       Int
-  status         RoomStatus
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
-  RoomAccessCard RoomAccessCard[]
+  id                      Int                       @id @default(autoincrement())
+  roomNumber              String
+  capacity                Int
+  currentPeople           Int
+  status                  RoomStatus
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  deletedAt               DateTime?
+  accessLogs              AccessLog[]
+  VehicleEntryLog         VehicleEntryLog[]
+  RoomVehicleLicensePlate RoomVehicleLicensePlate[]
 
   @@unique([roomNumber])
+  @@index([roomNumber])
   @@map("rooms")
 }
 
-model RoomAccessCard {
-  id          Int         @id @default(autoincrement())
-  acessCardId Int
-  roomId      Int
-  tenantId    Int
-  accessCard  AccessCard  @relation(fields: [acessCardId], references: [id])
-  room        Room        @relation(fields: [roomId], references: [id])
-  tenant      Tenant      @relation(fields: [tenantId], references: [id])
-  startDate   DateTime
-  endDate     DateTime?
-  AccessLog   AccessLog[]
-
-  @@map("room_access_cards")
-}
-
 model AccessLog {
-  id              Int            @id @default(autoincrement())
-  roomAcessCardId Int
-  roomAccessCard  RoomAccessCard @relation(fields: [roomAcessCardId], references: [id])
-  note            String?
-  peopleIn        Int
-  peopleOut       Int
-  logDate         DateTime
-  createdAt       DateTime       @default(now())
+  id           Int          @id @default(autoincrement())
+  roomId       Int
+  note         String?
+  userName     String
+  inCount      Int
+  outCount     Int
+  unlockMethod UnlockMethod
+  logDate      DateTime
+  createdAt    DateTime     @default(now())
+  room         Room         @relation(fields: [roomId], references: [id])
 
   @@map("access_logs")
 }
@@ -117,12 +108,101 @@ model AccountNotification {
   @@map("account_notifications")
 }
 
-enum AccessCardStatus {
-  ACTIVE
-  DEACTIVED
+model LogEventUnlock {
+  id          Int               @id @default(autoincrement())
+  recordType  Int
+  success     Int
+  keyboardPwd String?
+  userName    String
+  lockDate    BigInt
+  serverDate  BigInt
+  createdDate DateTime
+  status      EventUnlockStatus
+
+  @@index([userName])
+  @@map("log_events")
 }
 
-enum Role {
+model LogSensor {
+  id            Int             @id @default(autoincrement())
+  inCount       Int
+  outCount      Int
+  note          String?
+  status        LogSensorStatus
+  lastTimestamp BigInt
+  receivedDate  DateTime
+
+  @@map("log_sensors")
+}
+
+model Vehicle {
+  id                  Int                   @id @default(autoincrement())
+  brand               String
+  chassisNumber       String                @unique
+  engineNumber        String
+  color               String
+  registeredDate      DateTime              @default(now())
+  status              VehicleStatus         @default(ACTIVE)
+  updatedAt           DateTime              @updatedAt
+  VehicleLicensePlate VehicleLicensePlate[]
+
+  @@map("vehicles")
+}
+
+model LicensePlate {
+  licensePlateNumber  String                @id
+  status              LicensePlateStatus    @default(REGISTERED)
+  registeredAt        DateTime              @default(now())
+  VehicleLicensePlate VehicleLicensePlate[]
+
+  @@map("license_plates")
+}
+
+model VehicleLicensePlate {
+  id                      Int                       @id @default(autoincrement())
+  vehicleId               Int
+  licensePlateNumber      String
+  status                  VehicleLicensePlateStatus @default(ACTIVE)
+  assignedAt              DateTime                  @default(now())
+  vehicle                 Vehicle                   @relation(fields: [vehicleId], references: [id])
+  licensePlateRel         LicensePlate              @relation(fields: [licensePlateNumber], references: [licensePlateNumber])
+  RoomVehicleLicensePlate RoomVehicleLicensePlate[]
+
+  @@unique([vehicleId, licensePlateNumber])
+  @@index([licensePlateNumber])
+  @@map("vehicle_license_plates")
+}
+
+model RoomVehicleLicensePlate {
+  id                    Int                 @id @default(autoincrement())
+  roomId                Int
+  vehicleLicensePlateId Int
+  status                VehicleRoomStatus   @default(ACTIVE)
+  assignedAt            DateTime            @default(now())
+  room                  Room                @relation(fields: [roomId], references: [id])
+  vehicleLicensePlate   VehicleLicensePlate @relation(fields: [vehicleLicensePlateId], references: [id])
+
+  @@unique([roomId, vehicleLicensePlateId])
+  @@map("room_vehicle_license_plates")
+}
+
+model VehicleEntryLog {
+  id                 Int            @id @default(autoincrement())
+  roomId             Int
+  licensePlateNumber String
+  brand              String
+  chassisNumber      String
+  color              String
+  direction          entryDirection
+  note               String?
+  logDate            DateTime
+  createdAt          DateTime       @default(now())
+  room               Room           @relation(fields: [roomId], references: [id])
+
+  @@map("vehicle_entry_logs")
+}
+
+enum RoleName {
   USER
   SECURITY
   MANAGER
@@ -144,6 +224,11 @@ enum RoomStatus {
   UNAVAILABLE
 }
 
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+}
+
 enum NotificationType {
   ALERT
   EVENT
@@ -152,4 +237,59 @@ enum NotificationType {
   SECURITY
   SYSTEM_ANNOUNCEMENT
   NEW_MESSAGE
+}
+
+enum LogSensorStatus {
+  UNCONFIRMED
+  PENDING
+  CONFIRMED
+}
+
+enum EventUnlockStatus {
+  PENDING
+  CONFIRMED
+}
+
+enum UnlockMethod {
+  CARD
+  FINGERPRINT
+  PASSWORD
+}
+
+enum VehicleStatus {
+  ACTIVE
+  INACTIVE
+  STOLEN
+}
+
+enum LicensePlateStatus {
+  ACTIVE
+  INACTIVE
+  REGISTERED
+  REVOKED
+  LOST
+  STOLEN
+  EXPIRED
+}
+
+enum VehicleLicensePlateStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  REVOKED
+  TRANSFERRED
+  LOST
+}
+
+enum VehicleRoomStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  BLACKLISTED
+}
+
+enum entryDirection {
+  IN
+  OUT
 }
