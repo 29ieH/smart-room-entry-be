@@ -21,6 +21,7 @@ model Role {
   accounts    Account[]
 
   @@unique([roleName])
+  @@map("roles")
 }
 
 model Account {
