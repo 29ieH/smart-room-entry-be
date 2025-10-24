@@ -30,4 +30,7 @@ export default () => ({
   cookie: {
     accessTokenTTL: process.env.COOKIE_ACCESSTOKEN_TTL,
   },
+  cors: {
+    origins: process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) || [],
+  },
 });

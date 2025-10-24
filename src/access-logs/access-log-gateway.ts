@@ -15,20 +15,11 @@ import {
   AuthedSocket,
   SocketAuth,
 } from 'src/common/types/socket-auth.interface';
+import { extractTokenFromSocket } from 'src/common/utils/jwt.util';
 import { CustomLogger } from 'src/core/logger.service';
 import { AccessLogSummaryResponse } from './dto/response/acess-log-summary.response';
-import { extractTokenFromSocket } from 'src/common/utils/jwt.util';
 @WebSocketGateway({
   namespace: '/access-logs',
-  cors: {
-    origin: [
-      'http://127.0.0.1:5500',
-      'http://localhost:5500',
-      'http://192.168.1.9:5500',
-      'https://86f95ab09166.ngrok-free.app',
-    ],
-    credentials: true,
-  },
 })
 export class AccessLogGateway
   implements OnGatewayConnection, OnGatewayDisconnect
