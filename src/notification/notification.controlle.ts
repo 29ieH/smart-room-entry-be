@@ -1,13 +1,16 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import { UserNotificationFilterDto } from './dto/requests/user-notification-filter.dto';
 import { NotificationService } from './notification.service';
+import { DeviceTokenRequestDto } from './dto/requests/device-token-request.dto';
 
 @Controller('notifications')
 export class NotificationController {
@@ -24,5 +27,9 @@ export class NotificationController {
   @Get('/unread-count')
   async countUnRead() {
     return this.notificationService.countUnRead();
+  }
+  @Post('/device-token')
+  handleDeviceToken(@Body() dto: DeviceTokenRequestDto) {
+    this.notificationService.handleDeviceToken(dto);
   }
 }

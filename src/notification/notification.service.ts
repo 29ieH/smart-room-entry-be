@@ -18,6 +18,7 @@ import {
   NotificationSummaryResponse,
 } from './dto/responses/notification-summary.response.dto';
 import { NotificationGateway } from './notification-gateway';
+import { DeviceTokenRequestDto } from './dto/requests/device-token-request.dto';
 
 @Injectable()
 export class NotificationService {
@@ -194,12 +195,16 @@ export class NotificationService {
       });
     return notificationsUnRead.length;
   }
+  handleDeviceToken(dto: DeviceTokenRequestDto) {
+    this.logger.log(`Handle device token`, `Body:: ${JSON.stringify(dto)}`);
+  }
   // Gửi
   sendNotification(notifications: NotificationAccountSummary[]) {
     notifications.forEach((notify) => {
       this.notificationGateway.sendNotification(notify.accountId, notify);
     });
   }
+
   private buildNotificationSummaryResponse(
     data: Notification,
   ): NotificationSummary {
