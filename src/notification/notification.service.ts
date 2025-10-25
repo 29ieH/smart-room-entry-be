@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -10,6 +11,7 @@ import { getPaginationData } from 'src/common/helpers/paginate.helper';
 import { PaginationResult } from 'src/common/types/paginate-type';
 import { CustomLogger } from 'src/core/logger.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { DeviceTokenRequestDto } from './dto/requests/device-token-request.dto';
 import { NotificationCreationRequestDto } from './dto/requests/notification-creation-request.dto';
 import { UserNotificationFilterDto } from './dto/requests/user-notification-filter.dto';
 import { NotificationAccountSummary } from './dto/responses/notification-account-summary';
@@ -18,7 +20,7 @@ import {
   NotificationSummaryResponse,
 } from './dto/responses/notification-summary.response.dto';
 import { NotificationGateway } from './notification-gateway';
-import { DeviceTokenRequestDto } from './dto/requests/device-token-request.dto';
+import { AccessTokenPayload } from 'src/auth/interfaces/access-token-payload';
 
 @Injectable()
 export class NotificationService {
@@ -83,21 +85,21 @@ export class NotificationService {
     }
   }
   async getMyNotification(
+    user: AccessTokenPayload,
     filter: UserNotificationFilterDto,
   ): Promise<PaginationResult<NotificationAccountSummary>> {
     const { page, pageSize } = filter;
-    // const userDetail = await this.prismaService.account.findUnique({
-    //   where: {
-    //     id: user.sub,
-    //   },
-    // });
-    const mockUserId = 1;
-    // if (!userDetail) throw new UnauthorizedException('Vui lòng đăng nhập');
+    const userDetail = await this.prismaService.account.findUnique({
+      where: {
+        id: user.sub,
+      },
+    });
+    if (!userDetail) throw new BadRequestException('Vui lòng đăng nhập');
     const direction = SortDirection.DESC;
     const notificationsCount =
       await this.prismaService.accountNotification.count({
         where: {
-          accountId: mockUserId,
+          accountId: userDetail.id,
         },
       });
     const paginationData = getPaginationData(
@@ -108,7 +110,7 @@ export class NotificationService {
     const notifications = await this.prismaService.accountNotification.findMany(
       {
         where: {
-          accountId: mockUserId,
+          accountId: userDetail.id,
         },
         orderBy: {
           notification: {

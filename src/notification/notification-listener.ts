@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, RoleName } from '@prisma/client';
 import { AccountService } from 'src/account/account.service';
 import { AccountSummaryResponse } from 'src/account/dto/response/account-creation.response';
 import { NotificationEvent } from 'src/common/enum/notification-event.enum';
@@ -12,6 +12,8 @@ import { NotificationLicensePlatePayload } from './dto/payloads/notification-lic
 import { NotificationUnlockPayload } from './dto/payloads/notification-unlock-payload';
 import { NotificationSummaryResponse } from './dto/responses/notification-summary.response.dto';
 import { NotificationService } from './notification.service';
+import { PushNotifyService } from 'src/push-notify/push-notify.service';
+import { PushNotifyPayload } from 'src/push-notify/dto/request/push-notify-payload';
 
 @Injectable()
 export class NotificationListener {
@@ -23,6 +25,7 @@ export class NotificationListener {
     private readonly logger: CustomLogger,
     private readonly prismaService: PrismaService,
     private readonly configService: ConfigService,
+    private readonly pushNotifyService: PushNotifyService,
   ) {
     this.bellowMinOccupany = this.configService.get<number>(
       'notification.config.bellowMinOccupany',
@@ -110,6 +113,7 @@ export class NotificationListener {
       NotificationType.SECURITY,
       payload.content,
     );
+    await this.pushSubscriptionToAdmins(title, payload.content);
   }
 
   private async sendNotificationToAdmins(
@@ -137,6 +141,20 @@ export class NotificationListener {
     } catch (error) {
       this.logger.error(
         `sendNotificationToAdmins failed`,
+        (error as Error).message,
+      );
+    }
+  }
+  private async pushSubscriptionToAdmins(title: string, message: string) {
+    try {
+      const payload: PushNotifyPayload = {
+        title,
+        body: message,
+      };
+      await this.pushNotifyService.sendPushToRole(RoleName.ADMIN, payload);
+    } catch (error) {
+      this.logger.error(
+        `pushSubscriptionToAdmins failed`,
         (error as Error).message,
       );
     }

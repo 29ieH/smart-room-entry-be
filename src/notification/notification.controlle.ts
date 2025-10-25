@@ -11,13 +11,18 @@ import {
 import { UserNotificationFilterDto } from './dto/requests/user-notification-filter.dto';
 import { NotificationService } from './notification.service';
 import { DeviceTokenRequestDto } from './dto/requests/device-token-request.dto';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { AccessTokenPayload } from 'src/auth/interfaces/access-token-payload';
 
 @Controller('notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
   @Get('/me')
-  async getMyNotification(@Query() filter: UserNotificationFilterDto) {
-    return this.notificationService.getMyNotification(filter);
+  async getMyNotification(
+    @CurrentUser() user: AccessTokenPayload,
+    @Query() filter: UserNotificationFilterDto,
+  ) {
+    return this.notificationService.getMyNotification(user, filter);
   }
 
   @Patch(':notifyId/read')
