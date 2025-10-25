@@ -33,4 +33,8 @@ export default () => ({
   cors: {
     origins: process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) || [],
   },
+  vapidKey: {
+    public: process.env.VAPID_PUBLIC_KEY,
+    private: process.env.VAPID_PRIVATE_KEY,
+  },
 });
