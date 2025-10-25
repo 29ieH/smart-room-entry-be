@@ -36,9 +36,25 @@ model Account {
   updatedAt           DateTime              @updatedAt
   deletedAt           DateTime?
   AccountNotification AccountNotification[]
+  PushSubscription    PushSubscription[]
 
   @@unique([userName])
   @@map("accounts")
+}
+
+model PushSubscription {
+  id        Int           @id @default(autoincrement())
+  accountId Int
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime?
+  status    AccountStatus @default(ACTIVE)
+  account   Account       @relation(fields: [accountId], references: [id])
+
+  @@unique([endpoint])
+  @@map("push_subscriptions")
 }
 
 model Tenant {
