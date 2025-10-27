@@ -219,6 +219,19 @@ model VehicleEntryLog {
   @@map("vehicle_entry_logs")
 }
 
+model Setting {
+  id          Int       @id @default(autoincrement())
+  name        String
+  key         String
+  value       String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime?
+
+  @@unique([key])
+  @@map("settings")
+}
+
 enum RoleName {
   USER
   SECURITY

@@ -19,6 +19,7 @@ import { AuthGuard } from './common/guards/auth.guard';
 import { RoleGuard } from './common/guards/role.guard';
 import { LicensePlateModule } from './license-plate/license-plate.module';
 import { PushNotifyModule } from './push-notify/push-notify.module';
+import { SettingModule } from './settings/setting.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { PushNotifyModule } from './push-notify/push-notify.module';
     RoomModule,
     LicensePlateModule,
     PushNotifyModule,
+    SettingModule,
   ],
   controllers: [AppController],
   providers: [

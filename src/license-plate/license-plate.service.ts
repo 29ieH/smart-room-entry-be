@@ -5,6 +5,8 @@ import {
   entryDirection,
   EventUnlockStatus,
   Prisma,
+  Room,
+  VehicleEntryLog,
   VehicleRoomStatus,
   VehicleStatus,
 } from '@prisma/client';
@@ -23,6 +25,11 @@ import { RoomService } from 'src/room/room.service';
 import { LicensePlateInfoRequest } from './dto/license-plate-info.request';
 import { NotificationPublisher } from 'src/notification/notification-publisher';
 import { NotificationLicensePlatePayload } from 'src/notification/dto/payloads/notification-license-plate';
+import { GetAllLicensePlateRequest } from './dto/get-all-license-plate.request';
+import { getPaginationData } from 'src/common/helpers/paginate.helper';
+import { SortDirection } from 'src/common/enum/query.enum';
+import { VehicleEntryLogSummary } from './dto/vehicle-entry-log-summary';
+import { PaginationResult } from 'src/common/types/paginate-type';
 
 @Injectable()
 export class LicensePlateService {
@@ -246,5 +253,106 @@ export class LicensePlateService {
         `Error handling license plate info: ${(error as Error).message}`,
       );
     }
+  }
+  async getAllLicensePlate(
+    filter: GetAllLicensePlateRequest,
+  ): Promise<PaginationResult<VehicleEntryLogSummary>> {
+    const { page, pageSize } = filter;
+    const whereOptions = this.buildQueryFilterLicensePlate(filter);
+    const licensePlatesCount = await this.prismaService.vehicleEntryLog.count({
+      where: whereOptions,
+    });
+    const paginationData = getPaginationData(
+      licensePlatesCount,
+      page,
+      pageSize,
+    );
+
+    const licensePlates = await this.prismaService.vehicleEntryLog.findMany({
+      where: whereOptions,
+      include: {
+        room: true,
+      },
+      orderBy: [
+        {
+          logDate: SortDirection.DESC,
+        },
+        {
+          id: SortDirection.DESC,
+        },
+      ],
+      skip: paginationData.skip,
+      take: pageSize,
+    });
+
+    const response: PaginationResult<VehicleEntryLogSummary> = {
+      data: licensePlates.map((licensePlate) =>
+        this.toLicensePlateSummary(licensePlate),
+      ),
+      meta: {
+        currentPage: paginationData.safePage,
+        totalItems: paginationData.totalItems,
+        totalPages: paginationData.totalPages,
+        itemsPerPage: paginationData.safePageSize,
+        itemCount: licensePlates.length,
+      },
+    };
+    return response;
+  }
+  private buildQueryFilterLicensePlate(filter: GetAllLicensePlateRequest) {
+    return {
+      AND: [
+        ...this.buildRangeDateQuery(filter.startDate, filter.endDate),
+        ...(filter.search
+          ? [
+              {
+                OR: [
+                  {
+                    room: {
+                      roomNumber: {
+                        contains: filter.search,
+                      },
+                    },
+                  },
+                  {
+                    licensePlateNumber: {
+                      contains: filter.search,
+                    },
+                  },
+                  {
+                    brand: {
+                      contains: filter.search,
+                    },
+                  },
+                ],
+              },
+            ]
+          : []),
+      ],
+    };
+  }
+  private buildRangeDateQuery(startDate?: Date, endDate?: Date) {
+    if (!startDate && !endDate) return [];
+    const condition = {
+      logDate: {} as Record<string, Date>,
+    };
+    if (startDate) condition.logDate.gte = new Date(startDate);
+    if (endDate) condition.logDate.lte = new Date(endDate);
+    return [condition];
+  }
+
+  private toLicensePlateSummary(
+    data: VehicleEntryLog & { room: Room },
+  ): VehicleEntryLogSummary {
+    return {
+      id: data.id,
+      roomNumber: data.room.roomNumber,
+      licensePlateNumber: data.licensePlateNumber,
+      brand: data.brand,
+      chassisNumber: data.chassisNumber,
+      color: data.color,
+      note: data.note ?? '',
+      logDate: data.logDate,
+    };
   }
 }
