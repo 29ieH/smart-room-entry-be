@@ -406,6 +406,7 @@ export class LicensePlateService {
       id: data.id,
       roomNumber: data.room.roomNumber,
       licensePlateNumber: data.licensePlateNumber,
+      type: new String(data.vehicleType).toString(),
       brand: data.brand,
       chassisNumber: data.chassisNumber,
       color: data.color,
