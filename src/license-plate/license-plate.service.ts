@@ -16,20 +16,21 @@ import {
   UNKNOWN_COLOR,
   UNKNOWN_PLATE_LICENSE,
 } from 'src/common/constant/vehicle-data.constant';
+import { SortDirection } from 'src/common/enum/query.enum';
 import { LockStatus } from 'src/common/enum/unlock-event.enum';
+import { getPaginationData } from 'src/common/helpers/paginate.helper';
+import { PaginationResult } from 'src/common/types/paginate-type';
 import { parseRoomNumberByKey } from 'src/common/utils/parse-unlock-event';
 import { getStatusLock } from 'src/common/utils/ttlock.util';
 import { CustomLogger } from 'src/core/logger.service';
+import { NotificationLicensePlatePayload } from 'src/notification/dto/payloads/notification-license-plate';
+import { NotificationPublisher } from 'src/notification/notification-publisher';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RoomService } from 'src/room/room.service';
-import { LicensePlateInfoRequest } from './dto/license-plate-info.request';
-import { NotificationPublisher } from 'src/notification/notification-publisher';
-import { NotificationLicensePlatePayload } from 'src/notification/dto/payloads/notification-license-plate';
 import { GetAllLicensePlateRequest } from './dto/get-all-license-plate.request';
-import { getPaginationData } from 'src/common/helpers/paginate.helper';
-import { SortDirection } from 'src/common/enum/query.enum';
+import { LicensePlateInfoRequest } from './dto/license-plate-info.request';
 import { VehicleEntryLogSummary } from './dto/vehicle-entry-log-summary';
-import { PaginationResult } from 'src/common/types/paginate-type';
+import { VehicleType } from './enum/vehicle.enum';
 
 @Injectable()
 export class LicensePlateService {
@@ -47,9 +48,16 @@ export class LicensePlateService {
     historyInfo.direction = entryDirection.IN;
     const timeStamp = Number(dto.timeStamp);
     historyInfo.logDate = new Date(timeStamp);
+    historyInfo.vehicleType = dto.vehicleType;
     console.log('Timestampt:: ', timeStamp);
-    let notificationContent: string = '';
     console.log('Date:: ', new Date(timeStamp).toUTCString());
+    let isSendNotification = false;
+    let hasEventTTLock = false;
+    let isElecVehicle = false;
+    let isBlacklisted = false;
+    let nameBlackListed: string = '';
+    let roomNumberOpened: string = '';
+    let isRegistered = true;
     try {
       const licensePlateVehicle =
         await this.prismaService.vehicleLicensePlate.findFirst({
@@ -128,12 +136,12 @@ export class LicensePlateService {
             historyInfo.room = {
               connect: { id: roomByRoomNumber.id },
             };
+            isSendNotification = true;
             historyInfo.note =
               (historyInfo.note ?? '') +
               `Xe truy cập vào nhà trọ không cần mở khoá cửa (Phòng ${roomByRoomNumber.roomNumber} không khoá cửa) - `;
-            notificationContent =
-              (notificationContent ?? '') +
-              `Phòng ${roomByRoomNumber.roomNumber} không khoá cửa khi xe truy cập vào nhà trọ - `;
+            roomNumberOpened = roomByRoomNumber.roomNumber;
+            isSendNotification = true;
           } else {
             console.log('NO EVENT UNLOCK - NO UNLOCK RÊCENT');
             this.logger.log(
@@ -170,15 +178,14 @@ export class LicensePlateService {
         historyInfo.note =
           (historyInfo.note ?? '') +
           `Xe thuộc Phòng ${roomByRoomNumber.roomNumber} vừa truy cập vào nhà trọ - `;
+        hasEventTTLock = true;
+        roomNumberOpened = roomByRoomNumber.roomNumber;
       }
       if (!licensePlateVehicle) {
         console.log('Room license plate vehicle non:: ', historyInfo.room);
         this.logger.log(
           `License plate ${dto.licensePlate} not found in the system.`,
         );
-        notificationContent =
-          (notificationContent ?? '') +
-          `Xe truy cập với biển số ${dto.licensePlate} chưa được đăng ký trong hệ thống`;
         historyInfo.brand = UNKNOWN_BRAND;
         historyInfo.color = UNKNOWN_COLOR;
         historyInfo.chassisNumber = UNKNOWN_CHASSIS_NUMBER;
@@ -189,6 +196,8 @@ export class LicensePlateService {
         historyInfo.note =
           (historyInfo.note ?? '') +
           'Biển số xe chưa được đăng ký trong hệ thống.';
+        isRegistered = false;
+        isSendNotification = true;
         const vehicleEntryLog = await this.prismaService.vehicleEntryLog.create(
           {
             data: historyInfo as Prisma.VehicleEntryLogCreateInput,
@@ -197,7 +206,6 @@ export class LicensePlateService {
         this.logger.log(
           `Created vehicle entry log with ID: ${vehicleEntryLog.id} at ${new Date().toLocaleDateString()} for unregistered license plate.`,
         );
-        return;
       } else {
         historyInfo.brand = licensePlateVehicle.vehicle.brand;
         historyInfo.color = licensePlateVehicle.vehicle.color;
@@ -214,9 +222,9 @@ export class LicensePlateService {
           historyInfo.note =
             (historyInfo.note ?? '') +
             'Xe truy cập đang nằm trong danh sách đen';
-          notificationContent =
-            (notificationContent ?? '') +
-            `Xe truy cập với biển số ${dto.licensePlate} đang nằm trong danh sách hạn chế.`;
+          isBlacklisted = true;
+          nameBlackListed = 'Danh sách hạn chế';
+          isSendNotification = true;
         } else if (
           licensePlateVehicle.vehicle.status === VehicleStatus.STOLEN.toString()
         ) {
@@ -225,11 +233,12 @@ export class LicensePlateService {
           );
           historyInfo.note =
             (historyInfo.note ?? '') + 'Xe truy cập đang được báo đã mất cắp';
-          notificationContent =
-            (notificationContent ?? '') +
-            `Xe truy cập với biển số ${dto.licensePlate} đã được báo mất cắp.`;
+          isBlacklisted = true;
+          nameBlackListed = 'Danh sách xe báo mất cắp';
+          isSendNotification = true;
         } else {
-          historyInfo.note = historyInfo.note ?? '';
+          historyInfo.note =
+            (historyInfo.note ?? '') + `Biển số xe ${dto.licensePlate}`;
         }
         const vehicleEntryLog = await this.prismaService.vehicleEntryLog.create(
           {
@@ -240,7 +249,21 @@ export class LicensePlateService {
           `Created vehicle entry log with ID: ${vehicleEntryLog.id} at ${new Date().toLocaleDateString()} for license plate ${dto.licensePlate}.`,
         );
       }
-      if (!notificationContent) {
+      if (dto.vehicleType === VehicleType.ELEC) {
+        isElecVehicle = true;
+        isSendNotification = true;
+      }
+      if (isSendNotification) {
+        const notificationContent = this.buildNotificationContent({
+          plate: dto.licensePlate,
+          isElectric: isElecVehicle,
+          isRegistered,
+          hasEventTTLock,
+          lastOpenedBy: roomNumberOpened,
+          isBlacklisted,
+          nameBlackListed,
+        });
+        console.log('Notification content:: ', notificationContent);
         const notificationPayload: NotificationLicensePlatePayload = {
           content: notificationContent,
         };
@@ -253,6 +276,41 @@ export class LicensePlateService {
         `Error handling license plate info: ${(error as Error).message}`,
       );
     }
+  }
+  private buildNotificationContent({
+    plate,
+    isElectric = false,
+    isRegistered = true,
+    hasEventTTLock = false,
+    lastOpenedBy = '',
+    isBlacklisted = false,
+    nameBlackListed = '(Blacklisted | Stolen)',
+  }) {
+    const vehicleType = isElectric ? 'Xe điện' : 'Xe';
+    let base = '';
+
+    if (isBlacklisted) {
+      base = `Cảnh báo: ${vehicleType} có biển số [${plate}] thuộc danh sách cảnh báo (${nameBlackListed})`;
+    } else if (!isRegistered) {
+      base = `${vehicleType} có biển số [${plate}] chưa được đăng ký trong hệ thống`;
+    }
+    // 3️⃣ Xe bình thường
+    else {
+      base = `${vehicleType} có biển số [${plate}]`;
+    }
+
+    // 4️⃣ Tình huống cổng
+    if (hasEventTTLock) {
+      base += ` vừa vào khu trọ sau khi cổng được mở bởi Phòng #[${lastOpenedBy}].`;
+    } else {
+      // Cổng chưa đóng từ lần trước (phòng khác)
+      if (lastOpenedBy) {
+        base += ` vừa vào khu trọ khi cổng vẫn mở từ lần trước (${lastOpenedBy ? lastOpenedBy : ''} chưa đóng cổng).`;
+      } else {
+        base += ' vừa vào khu trọ khi cổng vẫn mở từ lần trước.';
+      }
+    }
+    return base;
   }
   async getAllLicensePlate(
     filter: GetAllLicensePlateRequest,

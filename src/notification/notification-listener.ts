@@ -46,6 +46,7 @@ export class NotificationListener {
       NotificationType.SECURITY,
       payload.content,
     );
+    await this.pushSubscriptionToAdmins(title, payload.content);
   }
   @OnEvent(NotificationEvent.FREQUENT_GATE_ACCESS_FOR_OTHERS)
   async handleFrequentGateAccessForOthers(payload: NotificationUnlockPayload) {
@@ -68,6 +69,7 @@ export class NotificationListener {
       NotificationType.SECURITY,
       payload.content,
     );
+    await this.pushSubscriptionToAdmins(title, payload.content);
   }
   @OnEvent(NotificationEvent.ROOM_OCCUPANCY_VERIFICATION_SUGGESTED)
   async handleRoomOccupancyVerificationSuggested() {
@@ -97,6 +99,7 @@ export class NotificationListener {
         roomsExceedingThresold.map(async (room) => {
           const message = `Vui lòng cập nhật lại số người trong phòng, hiện tại phòng ${room.id} có ${room.currentPeople} người — có vẻ không chính xác.`;
           await this.sendNotificationToAdmins(title, type, message);
+          await this.pushSubscriptionToAdmins(title, message);
         }),
       );
     }

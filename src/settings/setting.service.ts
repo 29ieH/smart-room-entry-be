@@ -23,6 +23,19 @@ export class SettingService {
     }
     return [];
   }
+  async getSettingByKey(key: string): Promise<SettingSummaryDto | null> {
+    const setting = await this.prismaService.setting.findUnique({
+      where: { key },
+    });
+    if (setting) {
+      return {
+        key: setting.key,
+        value: setting.value,
+        description: setting.description ?? undefined,
+      };
+    }
+    return null;
+  }
   async updateSettings(
     dto: UpdateSettingRequestDto,
   ): Promise<SettingSummaryDto[]> {

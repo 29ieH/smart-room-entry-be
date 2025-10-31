@@ -1,0 +1,1 @@
+export const NOTIFI_OCCUPANCY_RESET_DEFAULT = 10;

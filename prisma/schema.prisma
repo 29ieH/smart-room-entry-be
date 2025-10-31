@@ -209,6 +209,7 @@ model VehicleEntryLog {
   licensePlateNumber String
   brand              String
   chassisNumber      String
+  vehicleType        VehicleType    @default(GAS)
   color              String
   direction          entryDirection
   note               String?
@@ -322,4 +323,9 @@ enum VehicleRoomStatus {
 enum entryDirection {
   IN
   OUT
+}
+
+enum VehicleType {
+  ELEC
+  GAS
 }
