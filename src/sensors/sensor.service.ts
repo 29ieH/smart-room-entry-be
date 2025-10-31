@@ -309,6 +309,7 @@ export class SensorService {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       };
+      this.logger.log(`Base url:: ${this.ttlockBaseUrl}/lock/queryOpenState`);
       const response = await firstValueFrom(
         this.httpService.post<LockStatusResponse>(
           `${this.ttlockBaseUrl}/lock/queryOpenState`,
