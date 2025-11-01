@@ -73,15 +73,15 @@ export class SensorService {
         where: {
           status: EventUnlockStatus.PENDING,
           lockDate: {
-            gte: Number(payload.lastTimestamp * 1000) - timeWindow,
-            lte: Number(payload.lastTimestamp * 1000) + timeWindow,
+            gte: Number(payload.lastTimestamp) - timeWindow,
+            lte: Number(payload.lastTimestamp) + timeWindow,
           },
         },
       });
     if (!logEventLockRecent) {
       this.logger.log('LOG SENSOR - NO EVENT LOCK RECENT');
       // Check trạng thái cửa trước khi lastTimestampt
-      const lastWindowLockTime = payload.lastTimestamp * 1000 - 10 * 1000;
+      const lastWindowLockTime = payload.lastTimestamp - 10 * 1000;
       const lockStatusRecent = await this.getStatusLock(lastWindowLockTime);
       console.log(
         'Timesampt current:: ',
@@ -98,7 +98,7 @@ export class SensorService {
           await this.prismaService.logEventUnlock.findFirst({
             where: {
               lockDate: {
-                lt: payload.lastTimestamp * 1000,
+                lt: payload.lastTimestamp,
               },
             },
             orderBy: {
@@ -144,7 +144,7 @@ export class SensorService {
               outCount: payload.outCount,
               roomId: roomByRoomNumber.id,
               userName: unlockEventRecent.userName,
-              logDate: new Date(Number(payload.lastTimestamp * 1000)),
+              logDate: new Date(Number(payload.lastTimestamp)),
               unlockMethod: parseRecordTypeToUnlockMethod(
                 unlockEventRecent.recordType,
               ),
@@ -223,7 +223,7 @@ export class SensorService {
           outCount: payload.outCount,
           roomId: roomByRoomNumber.id,
           userName: logEventLockRecent.userName,
-          logDate: new Date(Number(payload.lastTimestamp * 1000)),
+          logDate: new Date(Number(payload.lastTimestamp)),
           unlockMethod: parseRecordTypeToUnlockMethod(
             logEventLockRecent.recordType,
           ),
