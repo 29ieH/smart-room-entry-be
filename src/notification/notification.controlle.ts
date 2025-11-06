@@ -30,8 +30,8 @@ export class NotificationController {
     return this.notificationService.markAsRead(notifyId);
   }
   @Get('/unread-count')
-  async countUnRead() {
-    return this.notificationService.countUnRead();
+  async countUnRead(@CurrentUser() user: AccessTokenPayload) {
+    return this.notificationService.countUnRead(user);
   }
   @Post('/device-token')
   handleDeviceToken(@Body() dto: DeviceTokenRequestDto) {

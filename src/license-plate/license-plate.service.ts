@@ -81,6 +81,7 @@ export class LicensePlateService {
     let nameBlackListed: string = '';
     let roomNumberOpened: string = '';
     let isRegistered = true;
+    let roomNumberEntry = 'Không xác định';
     try {
       const licensePlateVehicle =
         await this.prismaService.vehicleLicensePlate.findFirst({
@@ -159,6 +160,7 @@ export class LicensePlateService {
             historyInfo.room = {
               connect: { id: roomByRoomNumber.id },
             };
+            roomNumberEntry = roomNumber;
             isSendNotification = true;
             historyInfo.note =
               (historyInfo.note ?? '') +
@@ -198,6 +200,7 @@ export class LicensePlateService {
         historyInfo.room = {
           connect: { id: roomByRoomNumber.id },
         };
+        roomNumberEntry = roomNumber;
         historyInfo.note =
           (historyInfo.note ?? '') +
           `Xe thuộc Phòng ${roomByRoomNumber.roomNumber} vừa truy cập vào nhà trọ - `;
@@ -230,10 +233,7 @@ export class LicensePlateService {
           `Created vehicle entry log with ID: ${vehicleEntryLog.id} at ${new Date().toLocaleDateString()} for unregistered license plate.`,
         );
         await this.sendNewLog(
-          this.toLicensePlateSummaryGateway(
-            vehicleEntryLog,
-            historyInfo.room as Room,
-          ),
+          this.toLicensePlateSummaryGateway(vehicleEntryLog, roomNumberEntry),
         );
       } else {
         historyInfo.brand = licensePlateVehicle.vehicle.brand;
@@ -278,10 +278,7 @@ export class LicensePlateService {
           `Created vehicle entry log with ID: ${vehicleEntryLog.id} at ${new Date().toLocaleDateString()} for license plate ${dto.licensePlate}.`,
         );
         await this.sendNewLog(
-          this.toLicensePlateSummaryGateway(
-            vehicleEntryLog,
-            historyInfo.room as Room,
-          ),
+          this.toLicensePlateSummaryGateway(vehicleEntryLog, roomNumberEntry),
         );
       }
       if (dto.vehicleType === VehicleType.ELEC) {
@@ -451,11 +448,11 @@ export class LicensePlateService {
   }
   private toLicensePlateSummaryGateway(
     data: VehicleEntryLog,
-    room: Room | null,
+    roomNumber: string,
   ): VehicleEntryLogSummary {
     return {
       id: data.id,
-      roomNumber: room?.roomNumber ?? 'Không xác định',
+      roomNumber: roomNumber,
       licensePlateNumber: data.licensePlateNumber,
       type: new String(data.vehicleType).toString(),
       brand: data.brand,

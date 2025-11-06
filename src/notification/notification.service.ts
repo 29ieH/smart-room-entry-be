@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AccountNotification, Notification, Prisma } from '@prisma/client';
 import { SortDirection } from 'src/common/enum/query.enum';
@@ -180,18 +181,17 @@ export class NotificationService {
       throw new InternalServerErrorException('Internal server errror');
     }
   }
-  async countUnRead(): Promise<number> {
-    // const userDetail = await this.prismaService.account.findUnique({
-    //   where: {
-    //     id: user.sub,
-    //   },
-    // });
-    // if (!userDetail) throw new UnauthorizedException('Vui lòng đăng nhập');
-    const mockUserId = 1;
+  async countUnRead(user: AccessTokenPayload): Promise<number> {
+    const userDetail = await this.prismaService.account.findUnique({
+      where: {
+        id: user.sub,
+      },
+    });
+    if (!userDetail) throw new UnauthorizedException('Vui lòng đăng nhập');
     const notificationsUnRead =
       await this.prismaService.accountNotification.findMany({
         where: {
-          accountId: mockUserId,
+          accountId: userDetail.id,
           isRead: false,
         },
       });
