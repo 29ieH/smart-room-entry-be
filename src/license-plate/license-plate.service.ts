@@ -31,9 +31,14 @@ import { GetAllLicensePlateRequest } from './dto/get-all-license-plate.request';
 import { LicensePlateInfoRequest } from './dto/license-plate-info.request';
 import { VehicleEntryLogSummary } from './dto/vehicle-entry-log-summary';
 import { VehicleType } from './enum/vehicle.enum';
+import { AccountService } from 'src/account/account.service';
+import { AccountSummaryResponse } from 'src/account/dto/response/account-creation.response';
+import { LicensePlateGateway } from './license-plate-gateway';
 
 @Injectable()
 export class LicensePlateService {
+  private ttlAI: number;
+  private twCheckEventLockVehicleEntry: number;
   constructor(
     private logger: CustomLogger,
     private readonly prismaService: PrismaService,
@@ -41,12 +46,30 @@ export class LicensePlateService {
     private readonly httpService: HttpService,
     private readonly roomService: RoomService,
     private readonly notificationPublisher: NotificationPublisher,
-  ) {}
+    private readonly accountService: AccountService,
+    private readonly licensePlateGateway: LicensePlateGateway,
+  ) {
+    this.ttlAI = Number(this.configService.get<string>('ttl.ttlAI', '1'));
+    this.twCheckEventLockVehicleEntry = Number(
+      this.configService.get<string>('ttl.checkEventLockVehicleEntry', '180'),
+    );
+  }
+  async sendNewLog(payload: VehicleEntryLogSummary) {
+    this.logger.log(`Send new access log history to admins`);
+    const admins: AccountSummaryResponse[] =
+      await this.accountService.getAdmins();
+    if (admins.length > 0) {
+      const adminIds = admins.map((admin) => admin.id);
+      adminIds.forEach((adminId) => {
+        this.licensePlateGateway.sendNewLog(adminId, payload);
+      });
+    }
+  }
   async handleLicensePlate(dto: LicensePlateInfoRequest): Promise<void> {
     this.logger.debug(`Received license plate info: ${JSON.stringify(dto)}`);
     const historyInfo: Partial<Prisma.VehicleEntryLogCreateInput> = {};
     historyInfo.direction = entryDirection.IN;
-    const timeStamp = Number(dto.timeStamp);
+    const timeStamp = Number(dto.timeStamp * this.ttlAI);
     historyInfo.logDate = new Date(timeStamp);
     historyInfo.vehicleType = dto.vehicleType;
     console.log('Timestampt:: ', timeStamp);
@@ -73,7 +96,7 @@ export class LicensePlateService {
             },
           },
         });
-      const timeWindow = 180 * 1000;
+      const timeWindow = this.twCheckEventLockVehicleEntry * 1000;
       // Map event unlock
       console.log('Check log event rcent !!!');
       const logEventLockRecent =
@@ -206,6 +229,12 @@ export class LicensePlateService {
         this.logger.log(
           `Created vehicle entry log with ID: ${vehicleEntryLog.id} at ${new Date().toLocaleDateString()} for unregistered license plate.`,
         );
+        await this.sendNewLog(
+          this.toLicensePlateSummaryGateway(
+            vehicleEntryLog,
+            historyInfo.room as Room,
+          ),
+        );
       } else {
         historyInfo.brand = licensePlateVehicle.vehicle.brand;
         historyInfo.color = licensePlateVehicle.vehicle.color;
@@ -248,6 +277,12 @@ export class LicensePlateService {
         this.logger.log(
           `Created vehicle entry log with ID: ${vehicleEntryLog.id} at ${new Date().toLocaleDateString()} for license plate ${dto.licensePlate}.`,
         );
+        await this.sendNewLog(
+          this.toLicensePlateSummaryGateway(
+            vehicleEntryLog,
+            historyInfo.room as Room,
+          ),
+        );
       }
       if (dto.vehicleType === VehicleType.ELEC) {
         isElecVehicle = true;
@@ -286,7 +321,7 @@ export class LicensePlateService {
     isBlacklisted = false,
     nameBlackListed = '(Blacklisted | Stolen)',
   }) {
-    const vehicleType = isElectric ? 'Xe điện' : 'Xe';
+    const vehicleType = isElectric ? 'Xe điện' : 'Xe máy';
     let base = '';
 
     if (isBlacklisted) {
@@ -405,6 +440,22 @@ export class LicensePlateService {
     return {
       id: data.id,
       roomNumber: data.room.roomNumber,
+      licensePlateNumber: data.licensePlateNumber,
+      type: new String(data.vehicleType).toString(),
+      brand: data.brand,
+      chassisNumber: data.chassisNumber,
+      color: data.color,
+      note: data.note ?? '',
+      logDate: data.logDate,
+    };
+  }
+  private toLicensePlateSummaryGateway(
+    data: VehicleEntryLog,
+    room: Room | null,
+  ): VehicleEntryLogSummary {
+    return {
+      id: data.id,
+      roomNumber: room?.roomNumber ?? 'Không xác định',
       licensePlateNumber: data.licensePlateNumber,
       type: new String(data.vehicleType).toString(),
       brand: data.brand,

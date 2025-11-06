@@ -37,4 +37,13 @@ export default () => ({
     public: process.env.VAPID_PUBLIC_KEY,
     private: process.env.VAPID_PRIVATE_KEY,
   },
+  ttl: {
+    unconfirmed: process.env.UNCONFIRMED_UNLOCK_EVENT_TTL,
+    pending: process.env.PENDING_UNLOCK_EVENT_TTL,
+    pendingSensorEntry: process.env.PENDING_SENSOR_ENTRY_TTL,
+    checkLockBeforeEntrySensor: process.env.CHECK_BEFORE_LOCK_SENSOR_ENTRY_TTL,
+    checkLockAfterEntrySensor: process.env.CHECK_AFTER_LOCK_SENSOR_ENTRY_TTL,
+    ttlAI: process.env.TTL_AI,
+    checkEventLockVehicleEntry: process.env.CHECK_EVENTLOCK_VEHICLE_ENTRY_TTL,
+  },
 });

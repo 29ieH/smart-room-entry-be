@@ -40,6 +40,8 @@ export class AccessCardService {
   private cloudAcessToken: string;
   private cloudLockId: string;
   private ttlockBaseUrl: string;
+  private twUnconfirmed: number;
+  private twPending: number;
   constructor(
     private readonly logger: CustomLogger,
     private readonly configService: ConfigService,
@@ -64,6 +66,18 @@ export class AccessCardService {
     this.ttlockBaseUrl = this.configService.get<string>(
       'ttlockCloud.baseUrl',
       'baseURLDefault',
+    );
+    this.twUnconfirmed = Number(
+      this.configService.get<string>(
+        'ttl.unconfirmed',
+        UNCONFIRMED_UNLOCK_EVENT_TTL.toString(),
+      ),
+    );
+    this.twPending = Number(
+      this.configService.get<string>(
+        'ttl.pending',
+        PENDING_UNLOCK_EVENT_TTL.toString(),
+      ),
     );
   }
   async handleUnlockEvent(dto: UnlockEventRequest) {
@@ -110,9 +124,8 @@ export class AccessCardService {
           );
           return;
         } else {
-          const unConfirmedWindowTime =
-            UNCONFIRMED_UNLOCK_EVENT_TTL * 60 * 1000;
-          const pendingWindowTime = PENDING_UNLOCK_EVENT_TTL * 1000;
+          const unConfirmedWindowTime = this.twUnconfirmed * 60 * 1000;
+          const pendingWindowTime = this.twPending * 1000;
           let status: EventUnlockStatus = EventUnlockStatus.PENDING;
           try {
             // Lấy ra room của lock hiện tại

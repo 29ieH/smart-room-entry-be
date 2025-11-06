@@ -32,6 +32,10 @@ export class SensorService {
   private cloudAcessToken: string;
   private cloudLockId: string;
   private ttlockBaseUrl: string;
+  private twPendingSensorEntry: number;
+  private twCheckLockBeforeEntry: number;
+  private twCheckLockAfterEntry: number;
+  private ttlAI: number;
   constructor(
     private readonly prismaService: PrismaService,
     private readonly configService: ConfigService,
@@ -57,13 +61,26 @@ export class SensorService {
       'ttlockCloud.baseUrl',
       'baseURLDefault',
     );
+    this.twPendingSensorEntry = Number(
+      this.configService.get<string>('ttl.PENDING_SENSOR_ENTRY_TTL', '50'),
+    );
+    this.twCheckLockBeforeEntry = Number(
+      this.configService.get<string>(
+        'ttl.CHECK_BEFORE_LOCK_SENSOR_ENTRY_TTL',
+        '10',
+      ),
+    );
+    this.twCheckLockAfterEntry = Number(
+      this.configService.get<string>('ttl.checkLockAfterEntrySensor', '10'),
+    );
+    this.ttlAI = Number(this.configService.get<string>('ttl.ttlAI', '1'));
   }
 
   async handleSensorEvent(payload: SensorPayload) {
-    console.log('lastime number:: ', payload.lastTimestamp * 1000);
+    payload.lastTimestamp = payload.lastTimestamp * this.ttlAI;
     console.log(
       'sensor timestamp vn:: ',
-      new Date(payload.lastTimestamp * 1000).toUTCString(),
+      new Date(payload.lastTimestamp).toUTCString(),
     );
     const timeWindow = 50 * 1000;
     let note: string = '';
@@ -171,8 +188,7 @@ export class SensorService {
         lockStatusRecent.state === Number(LockStatus.LOCK)
       ) {
         this.logger.log('LOG SENSOR - CHECK LÃN VÃN');
-        const unlockHistoryWindowTime =
-          payload.lastTimestamp * 1000 + 10 * 1000;
+        const unlockHistoryWindowTime = payload.lastTimestamp + 10 * 1000;
         // Check xem sau 10s có ra ngoài k
         const unlockHistory = await this.getHistoryUnlock(Date.now(), {
           startDate: unlockHistoryWindowTime,
