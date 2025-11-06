@@ -26,8 +26,11 @@ export class NotificationController {
   }
 
   @Patch(':notifyId/read')
-  async markAsRead(@Param('notifyId', ParseIntPipe) notifyId: number) {
-    return this.notificationService.markAsRead(notifyId);
+  async markAsRead(
+    @Param('notifyId', ParseIntPipe) notifyId: number,
+    @CurrentUser() user: AccessTokenPayload,
+  ) {
+    return this.notificationService.markAsRead(notifyId, user);
   }
   @Get('/unread-count')
   async countUnRead(@CurrentUser() user: AccessTokenPayload) {

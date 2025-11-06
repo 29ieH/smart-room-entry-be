@@ -139,14 +139,16 @@ export class NotificationService {
     };
     return response;
   }
-  async markAsRead(notifyId: number): Promise<NotificationAccountSummary> {
-    // const userDetail = await this.prismaService.account.findUnique({
-    //   where: {
-    //     id: user.sub,
-    //   },
-    // });
-    // if (!userDetail) throw new UnauthorizedException('Vui lòng đăng nhập');
-    const mockUserId = 1;
+  async markAsRead(
+    notifyId: number,
+    user: AccessTokenPayload,
+  ): Promise<NotificationAccountSummary> {
+    const userDetail = await this.prismaService.account.findUnique({
+      where: {
+        id: user.sub,
+      },
+    });
+    if (!userDetail) throw new UnauthorizedException('Vui lòng đăng nhập');
     const notificationById =
       await this.prismaService.accountNotification.findUnique({
         where: {
@@ -158,7 +160,7 @@ export class NotificationService {
       });
     if (!notificationById)
       throw new NotFoundException('Không tìm thấy thông báo');
-    if (notificationById.accountId !== mockUserId)
+    if (notificationById.accountId !== userDetail.id)
       throw new ForbiddenException('Bạn không có quyền thực hiện thao tác này');
     if (notificationById.isRead === true)
       return this.buildNotificationAccountSummary(notificationById);
