@@ -219,6 +219,7 @@ export class AccessCardService {
                   },
                 },
               });
+              await this.roomService.sendUpdateCurrentTenant(roomUpdated);
               const accessLogCreated =
                 await this.prismaService.accessLog.create({
                   data: {
@@ -280,7 +281,6 @@ export class AccessCardService {
               await this.prismaService.logEventUnlock.create({
                 data: eventLockPayload,
               }); // this.logger.log(`Event lock created:: ${logEventLockCreated}`)
-
             console.log('Event lock created:: ', logEventLockCreated);
           } catch (error) {
             this.logger.error(

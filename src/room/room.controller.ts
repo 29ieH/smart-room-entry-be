@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { RoomFilterRequest } from './dto/request/room-filter.request';
 import { RoomService } from './room.service';
 import { RoomUpdateRequest } from './dto/request/room-update.request';
+import { GetPageRequest } from './dto/request/get-page.request';
 
 @Controller('/rooms')
 export class RoomController {
@@ -16,5 +17,9 @@ export class RoomController {
     @Body() dto: RoomUpdateRequest,
   ) {
     return this.roomService.updateRoom(Number(roomId), dto);
+  }
+  @Get('/find-pages')
+  async getPageByRoomId(@Query() getPageRequest: GetPageRequest) {
+    return this.roomService.getPageByRoomId(getPageRequest);
   }
 }

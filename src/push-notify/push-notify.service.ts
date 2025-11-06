@@ -90,6 +90,18 @@ export class PushNotifyService {
       );
       return;
     }
+    const subscriptionExistByClient =
+      await this.prismaService.pushSubscription.findUnique({
+        where: {
+          endpoint: subscription.endpoint,
+        },
+      });
+    if (subscriptionExistByClient) {
+      this.logger.log(
+        `Subscribe by subscription client exist !!! ${subscription.endpoint}`,
+      );
+      return;
+    }
     const subscriptionData: Prisma.PushSubscriptionCreateInput = {
       account: {
         connect: {

@@ -7,10 +7,21 @@ import { RoomFilterRequest } from './dto/request/room-filter.request';
 import { getPaginationData } from 'src/common/helpers/paginate.helper';
 import { SortDirection } from 'src/common/enum/query.enum';
 import { RoomUpdateRequest } from './dto/request/room-update.request';
+import { AccountService } from 'src/account/account.service';
+import { CustomLogger } from 'src/core/logger.service';
+import { AccountSummaryResponse } from 'src/account/dto/response/account-creation.response';
+import { roomGateway } from './room-gateway';
+import { GetPageRequest } from './dto/request/get-page.request';
+import { GetPageResponse } from './dto/response/get-page.response';
 
 @Injectable()
 export class RoomService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly accountService: AccountService,
+    private readonly logger: CustomLogger,
+    private readonly roomGateway: roomGateway,
+  ) {}
   async getRoomByCodeNumber(
     codeNumber: string,
   ): Promise<RoomSummaryResponse | null> {
@@ -21,6 +32,22 @@ export class RoomService {
     });
     if (!roomFinded) return null;
     return this.buildRoomSummaryResponse(roomFinded);
+  }
+  async sendUpdateCurrentTenant(roomUpdated: Room) {
+    this.logger.log(`Send new access log history to admins`);
+    const admins: AccountSummaryResponse[] =
+      await this.accountService.getAdmins();
+    if (!roomUpdated) {
+      this.logger.log(`Room updated not found`);
+      return;
+    }
+    const payload = this.buildRoomSummaryResponse(roomUpdated);
+    if (admins.length > 0) {
+      const adminIds = admins.map((admin) => admin.id);
+      adminIds.forEach((adminId) => {
+        this.roomGateway.sendNewLog(adminId, payload);
+      });
+    }
   }
   async getRooms(
     filter: RoomFilterRequest,
@@ -77,6 +104,28 @@ export class RoomService {
       data: dto,
     });
     return this.buildRoomSummaryResponse(roomUpdated);
+  }
+  async getPageByRoomId(
+    getPageRequest: GetPageRequest,
+  ): Promise<GetPageResponse | null> {
+    const targetRoom = await this.prismaService.room.findUnique({
+      where: { id: getPageRequest.roomId },
+      select: { roomNumber: true },
+    });
+    if (!targetRoom) {
+      this.logger.error(
+        `Không tìm thấy phòng với id:: ${getPageRequest.roomId}`,
+      );
+      return null;
+    }
+    const countBefore = await this.prismaService.room.count({
+      where: { roomNumber: { lt: targetRoom.roomNumber } },
+    });
+    const page = Math.floor(countBefore / getPageRequest.pageSize) + 1;
+    return {
+      roomId: getPageRequest.roomId,
+      page,
+    };
   }
   private buildRoomSummaryResponse(data: Room): RoomSummaryResponse {
     return {

@@ -356,7 +356,7 @@ export class SensorService {
         },
       },
     });
-
+    await this.roomService.sendUpdateCurrentTenant(roomUpdated);
     if (roomUpdated.currentPeople > roomUpdated.capacity) {
       const payload: NotificationUnlockPayload = {
         content: `Số người hiện tại của phòng ${roomUpdated.id} là ${roomUpdated.currentPeople} vượt quá số người quy định là ${roomUpdated.capacity}`,
