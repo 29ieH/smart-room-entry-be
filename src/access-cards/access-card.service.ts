@@ -253,7 +253,7 @@ export class AccessCardService {
               if (roomUpdated.currentPeople > roomUpdated.capacity) {
                 this.logger.log('Room capacity exceeded - sendNotifiy');
                 const payload: NotificationUnlockPayload = {
-                  content: `Số người hiện tại của phòng ${roomUpdated.id} là:: ${roomUpdated.currentPeople} vượt quá số người quy định là:: ${roomUpdated.capacity}`,
+                  content: `Số người hiện tại của phòng ${roomUpdated.id} là ${roomUpdated.currentPeople} vượt quá số người quy định là ${roomUpdated.capacity}`,
                 };
                 this.notificationPublisher.publishRoomCapacityExceeded(payload);
               } else if (roomUpdated.currentPeople < 0) {
